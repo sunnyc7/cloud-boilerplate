@@ -1,0 +1,18 @@
+{
+  "version": "1.0.0",
+  "licensezero": [
+    {
+      "agentSignature": "8a4eb2ef8efd695259eb82527340273dfe14cb3e6f1d95cded4876c175adbcf4b244714fe94a28889d4437faa466a7c85997fb0417cea9981261c65128841203",
+      "license": {
+        "homepage": "https://cloudbootup.com",
+        "jurisdiction": "US-CA",
+        "name": "david karapetyan",
+        "projectID": "dda20927-a4e0-4875-8f2f-f7c467331eef",
+        "publicKey": "be1fcfe7b5f47634bd93fe213fc7181d5d4367c012e7159760906218b7c068dc",
+        "terms": "prosperity",
+        "version": "1.1.0"
+      },
+      "licensorSignature": "68e4c5f5d807bb43b1a44f3c70733b4c228cc4161f4aad8a541de0ee538d5ffd3e2c009b649ad221f659f2c0751d34e33feec00637f9ecf6004ea60fd433e206"
+    }
+  ]
+}
