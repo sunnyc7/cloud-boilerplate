@@ -1,5 +1,12 @@
 import * as aws from "@pulumi/aws";
 
+// Public and private subnet associated with the availability zone
+type AvailabilityZoneSubnets = {
+    az: string,
+    privateSubnet: aws.ec2.Subnet,
+    publicSubnet: aws.ec2.Subnet
+};
+
 // Common options for subnets
 interface SubnetArgs<B extends boolean> extends aws.ec2.SubnetArgs {
     mapPublicIpOnLaunch: B;
@@ -73,44 +80,60 @@ export class MultiRegionVPC {
             // Creat the VPC
             const vpc = this.createVpc(p, vpcName);
             // Create the internet gateway for the public subnet
-            const gatewayName = `${r}-gateway`;
-            const gatewayOptions: aws.ec2.InternetGatewayArgs = {
-                vpcId: vpc.id,
-                tags: { Name: gatewayName }
-            };
-            const gateway = new aws.ec2.InternetGateway(gatewayName, gatewayOptions, { provider: p })
+            const gateway = this.createGateway(r, vpc, p);
             // Create the route for outbound internet access
-            const routeTableName = `${r}-public-route-table`;
-            const routeTableOptions: aws.ec2.RouteTableArgs = {
-                routes: [
-                    {
-                        cidrBlock: '0.0.0.0/0',
-                        gatewayId: gateway.id
-                    }
-                ],
-                vpcId: vpc.id
-            };
-            const publicRouteTable = new aws.ec2.RouteTable(routeTableName, routeTableOptions, { provider: p });
+            const publicRouteTable = this.createRouteTable(r, gateway, vpc, p);
             // Private and public subnets for each availability zone
             const subnets = await this.createSubnets(p, vpc, azs);
             // Associate the route table with the subnets
-            const associations = subnets.map(subnetInformation => {
-                const publicSubnet = subnetInformation.publicSubnet;
-                const associationArgs: aws.ec2.RouteTableAssociationArgs = {
-                    routeTableId: publicRouteTable.id,
-                    subnetId: publicSubnet.id
-                };
-                const association = publicSubnet.tags.apply(tags => {
-                    const name = tags!['Name'];
-                    const associationName = `${name}-association`;
-                    const routeTableAssociation = new aws.ec2.RouteTableAssociation(associationName, associationArgs, { provider: p });
-                    return routeTableAssociation;
-                });
-                return association;
-            });
+            const associations = this.createAssociations(subnets, publicRouteTable, p);
             return { region: r, vpc: vpc, subnets: subnets, associations: associations };
         });
         return networkConfig;
     }
 
+    // Make sure the public subnet has the proper outbound gateway routing
+    createAssociations(subnets: AvailabilityZoneSubnets[], publicRouteTable: aws.ec2.RouteTable, p: aws.Provider) {
+        return subnets.map(subnetInformation => {
+            const publicSubnet = subnetInformation.publicSubnet;
+            const associationArgs: aws.ec2.RouteTableAssociationArgs = {
+                routeTableId: publicRouteTable.id,
+                subnetId: publicSubnet.id
+            };
+            const association = publicSubnet.tags.apply(tags => {
+                const name = tags!['Name'];
+                const associationName = `${name}-association`;
+                const routeTableAssociation = new aws.ec2.RouteTableAssociation(associationName, associationArgs, { provider: p });
+                return routeTableAssociation;
+            });
+            return association;
+        });
+    }
+
+    // Given gateway information create the route table for sending traffic through the gateway
+    createRouteTable(r: string, gateway: aws.ec2.InternetGateway, vpc: aws.ec2.Vpc, p: aws.Provider) {
+        const routeTableName = `${r}-public-route-table`;
+        const routeTableOptions: aws.ec2.RouteTableArgs = {
+            routes: [
+                {
+                    cidrBlock: '0.0.0.0/0',
+                    gatewayId: gateway.id
+                }
+            ],
+            vpcId: vpc.id
+        };
+        const publicRouteTable = new aws.ec2.RouteTable(routeTableName, routeTableOptions, { provider: p });
+        return publicRouteTable;
+    }
+
+    // Create the internet gateway for properly routing traffic to the outside world
+    createGateway(r: string, vpc: aws.ec2.Vpc, p: aws.Provider) {
+        const gatewayName = `${r}-gateway`;
+        const gatewayOptions: aws.ec2.InternetGatewayArgs = {
+            vpcId: vpc.id,
+            tags: { Name: gatewayName }
+        };
+        const gateway = new aws.ec2.InternetGateway(gatewayName, gatewayOptions, { provider: p });
+        return gateway;
+    }
 }
