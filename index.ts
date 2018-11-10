@@ -2,8 +2,6 @@ import { MultiRegionVPC } from './pulumi/aws/multi-region';
 import { ec2 } from '@pulumi/aws';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
-import { KeyPair } from '@pulumi/aws/lightsail';
-import { KeyPairArgs } from '@pulumi/aws/ec2';
 
 async function main() {
   // We just need to create a VPC in a single region for the time being
@@ -65,7 +63,6 @@ async function main() {
     // The cloud-init script has to be different so that the consul nodes can talk to the cloud-init
     // buddy node and coordinate the consul cluster bootstrap process
     const nodeCount = 3;
-    console.log('Consul node count', nodeCount);
     // Grab the latest version of consul from the releases URL. This really needs to be better
     const consulNodeBootstrapScript = cloudInitBuddy.privateIp.apply(buddyIp => {
       // Log the IP address of the buddy node

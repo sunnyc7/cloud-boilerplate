@@ -1,4 +1,4 @@
-#!/bin/bash eu
+#!/bin/bash -eu
 # Intercace: ENDPOINT, NODE_COUNT, CONSUL_DOWNLOAD_URL
 set -x
 set -o pipefail
@@ -16,24 +16,27 @@ rm -f *.zip
 export SELF_ADDRESS="$(ip addr show eth0 | grep 'inet ' | awk '{print $2}' | cut -f1 -d'/')"
 # Metadata endpoint for coordination
 export CONSUL_ENDPOINT="${ENDPOINT}/metadata/consul"
-# Initialize the hosts so it can be populated. This can fail so we need to loop until success
-while ! (curl -k -XPOST "${CONSUL_ENDPOINT}" -d '{"hosts":[]}'); do
-  echo "Failed to initialize metadata endpoint. Sleeping and retrying"
-  sleep 2
-done
+# Initialize the hosts so it can be populated. This can fail so we need to loop until success.
+# Do this only if the there are no hosts already
+if ! [[ "$(curl -k "${CONSUL_ENDPOINT}/hosts.length")" -gt 0 ]]; then
+  while ! (curl -k -XPOST "${CONSUL_ENDPOINT}" -d '{"hosts":[]}'); do
+    echo "Failed to initialize metadata endpoint. Sleeping and retrying"
+    sleep 2
+  done
+fi
 # If we don't have enough registered nodes then loop until we do
 while [[ "$(curl -k "${CONSUL_ENDPOINT}/hosts.length")" -lt "${NODE_COUNT}" ]]; do
   # It is possible some other node reset everything so make sure we re-register
   if ! (curl -k "${CONSUL_ENDPOINT}" | grep "${SELF_ADDRESS}"); then
-    curl -k -XPOST "${CONSUL_ENDPOINT}/hosts" -d "${SELF_ADDRESS}"
+    curl -k -XPOST "${CONSUL_ENDPOINT}/hosts" -d \"${SELF_ADDRESS}\"
   fi
   echo "Waiting for other nodes to register."
   sleep 1
 done
 # Whoever registered first will set a key
-if [[ "$(curl -k "${CONSUL_ENDPOINT}/hosts/0")" == "${SELF_ADDRESS}" ]]; then
+if [[ "$(curl -k "${CONSUL_ENDPOINT}/hosts/0")" == \"${SELF_ADDRESS}\" ]]; then
   key="$(./consul keygen | head -c 24)"
-  curl -k -XPOST -d \"{\"key\":\"${key}\"}\" "${CONSUL_ENDPOINT}"
+  curl -k -XPOST -d "{\"key\":\"${key}\"}" "${CONSUL_ENDPOINT}"
 fi
 # Wait for the key to be set
 while ! (curl -k "${CONSUL_ENDPOINT}.keys" | grep "key"); do
