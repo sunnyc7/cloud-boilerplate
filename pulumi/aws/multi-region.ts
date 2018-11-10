@@ -23,8 +23,11 @@ export class MultiRegionVPC {
     createSubnet<B extends boolean>(p: aws.Provider, vpc: aws.ec2.Vpc, az: string, ipAssignment: B, cidr: string) {
         const name = ipAssignment ? `public-subnet-${az}` : `private-subnet-${az}`;
         const subnetArgs: SubnetArgs<B> = {
-            cidrBlock: cidr, vpcId: vpc.id, mapPublicIpOnLaunch: ipAssignment,
-            tags: { Name: name }
+            cidrBlock: cidr,
+            vpcId: vpc.id,
+            mapPublicIpOnLaunch: ipAssignment,
+            availabilityZone: az,
+            tags: { Name: name },
         };
         const subnet = new aws.ec2.Subnet(name, subnetArgs, { provider: p });
         return subnet;
@@ -54,7 +57,7 @@ export class MultiRegionVPC {
     }
 
     // Create 10.0.0.0/16 VPC
-    createVpc(p: aws.Provider, vpcName: string): aws.ec2.Vpc {
+    createVpc(p: aws.Provider, vpcName: string) {
         // VPC for the region
         const vpcArguments: aws.ec2.VpcArgs = {
             cidrBlock: '10.0.0.0/16',
@@ -64,11 +67,33 @@ export class MultiRegionVPC {
             tags: { Name: vpcName }
         };
         const vpc = new aws.ec2.Vpc(vpcName, vpcArguments, { provider: p });
-        return vpc;
+        // Each VPC needs a security group for inbound SSH access
+        const securityGroupArgs: aws.ec2.SecurityGroupArgs = {
+            description: 'SSH access',
+            vpcId: vpc.id,
+            ingress: [
+                {
+                    fromPort: 22,
+                    toPort: 22,
+                    protocol: 'tcp',
+                    cidrBlocks: [
+                        '0.0.0.0/0'
+                    ]
+                },
+            ]
+        };
+        // Each VPC needs a security group for inbound SSH access
+        const sshAccess = new aws.ec2.SecurityGroup(`${vpcName}-ssh-access`, securityGroupArgs);
+        return {
+            vpc: vpc,
+            securityGroups: [ // Make sure to include the default security group for the VPC
+                sshAccess.id, vpc.defaultSecurityGroupId
+            ]
+        };
     }
 
     // Where we put everything together for creating VPCs, subnets, security groups, routing tables, etc.
-    async create() {
+    create() {
         // Iterate over each region and create the VPC and associate public/private subnets
         const networkConfig = this.regions.map(async (r: aws.Region) => {
             const vpcName = `${r}-vpc`;
@@ -80,11 +105,11 @@ export class MultiRegionVPC {
             // Creat the VPC
             const vpc = this.createVpc(p, vpcName);
             // Create the internet gateway for the public subnet
-            const gateway = this.createGateway(r, vpc, p);
+            const gateway = this.createGateway(r, vpc.vpc, p);
             // Create the route for outbound internet access
-            const publicRouteTable = this.createRouteTable(r, gateway, vpc, p);
+            const publicRouteTable = this.createRouteTable(r, gateway, vpc.vpc, p);
             // Private and public subnets for each availability zone
-            const subnets = await this.createSubnets(p, vpc, azs);
+            const subnets = await this.createSubnets(p, vpc.vpc, azs);
             // Associate the route table with the subnets
             const associations = this.createAssociations(subnets, publicRouteTable, p);
             return { region: r, vpc: vpc, subnets: subnets, associations: associations };
