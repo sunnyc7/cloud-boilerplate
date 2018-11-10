@@ -1,6 +1,9 @@
 import { MultiRegionVPC } from './pulumi/aws/multi-region';
 import { ec2 } from '@pulumi/aws';
 import * as crypto from 'crypto';
+import * as fs from 'fs';
+import { KeyPair } from '@pulumi/aws/lightsail';
+import { KeyPairArgs } from '@pulumi/aws/ec2';
 
 async function main() {
   // We just need to create a VPC in a single region for the time being
@@ -22,31 +25,23 @@ async function main() {
   // Generate a random password for the node
   const buddyPassword = crypto.createHash('sha256').update(
     crypto.randomBytes(32)).digest('base64').replace(/[\+\=\/]/g, '');
-  // Log the username and password
-  console.log('Buddy username', buddyUser);
-  console.log('Buddy passowrd', buddyPassword);
-  // All the code necessary for bootstrapping cloud-init-buddy node
-  const buddyUserData = `#!/bin/bash -eu
-    set -x
-    set -o pipefail
-    echo $(pwd)
-    apt update && sudo apt install --yes ruby git
-    git clone https://github.com/cloudbootup/cloud-init-buddy.git
-    cd cloud-init-buddy
-    rake setup:initialize
-    rake flyway:check || rake flyway:install
-    rake postgres:configure
-    npm install
-    # We need to listen on all interfaces
-    sed -i 's/127.0.0.1/0.0.0.0/' lib/config.ts
-    # Compile everything to js
-    ./node_modules/.bin/tsc || true
-    # Generate certificates
-    node utils/generate-certificate.js
-    tmux new-session -d -s cloud-init-buddy 'node app.js' && sleep 1
-    echo '${buddyPassword}' > node-password
-    node utils/users.js add-user '${buddyUser}' '${buddyPassword}'
-  `;
+  // The cloud-init script is a little tricky to get right because of escaping issues so we try to do the
+  // next best thing. Each provisioning script has a pre-amble that exposes the required script variables,
+  // followed by a base64 encoded block that is written to a file, follow by base64 decoding and execution.
+  // This avoids all encoding issues and forces each provisioning script to have a nice and clean interface.
+  const buddyUserData = [
+    '#!/bin/bash -eu',
+    'set -x',
+    'set -o pipefail',
+    `export BUDDY_PASSWORD="${buddyPassword}"`,
+    `export BUDDY_USER="${buddyUser}"`,
+    'cat <<EOF > provision.sh.base64',
+    fs.readFileSync(`${__dirname}/scripts/cloud-init-buddy.sh`).toString('base64'),
+    'EOF',
+    'base64 -d provision.sh.base64 > provision.sh',
+    'chmod +x provision.sh',
+    './provision.sh'
+  ].join("\n");
 
   // Cloud init buddy node creation
   const cloudInitBuddyArgs: ec2.InstanceArgs = {
@@ -75,62 +70,21 @@ async function main() {
     const consulNodeBootstrapScript = cloudInitBuddy.privateIp.apply(buddyIp => {
       // Log the IP address of the buddy node
       console.log('Buddy IP address', buddyIp);
-      const consulNodeUserData = `#!/bin/bash -eu
-        set -x
-        set -o pipefail
-        echo $(pwd)
-        export CLOUD_INIT_BUDDY="${buddyIp}"
-        export PASSWORD="${buddyPassword}"
-        export ENDPOINT="https://${buddyUser}:${buddyPassword}@${buddyIp}:8443"
-        export NODE_COUNT="${nodeCount}"
-        mkdir -p /consul
-        cd /consul
-        while ! (wget '${consulUrl}'); do
-          echo "Waiting for network to be ready"
-          sleep 2
-        done
-        apt install -y zip
-        unzip -o *.zip
-        rm -f *.zip
-        # We need the private address for coordination
-        export SELF_ADDRESS="$(ip addr show eth0 | grep 'inet ' | awk '{print $2}' | cut -f1 -d'/')"
-        # Metadata endpoint for coordination
-        export CONSUL_ENDPOINT="$\{ENDPOINT}/metadata/consul"
-        # Initialize the hosts so it can be populated. This can fail so we need to loop until success
-        while ! (curl -k -XPOST "$\{CONSUL_ENDPOINT}" -d '{"hosts":[]}'); do
-          echo "Failed to initialize metadata endpoint. Sleeping and retrying"
-          sleep 2
-        done
-        # If we don't have enough registered nodes then loop until we do
-        while [[ "$(curl -k "$\{CONSUL_ENDPOINT}/hosts.length")" -lt "$\{NODE_COUNT}" ]]; do
-          # It is possible some other node reset everything so make sure we re-register
-          if ! (curl -k "$\{CONSUL_ENDPOINT}" | grep "$\{SELF_ADDRESS}"); then
-            curl -k -XPOST "$\{CONSUL_ENDPOINT}/hosts" -d \\"$\{SELF_ADDRESS}\\"
-          fi
-          echo "Waiting for other nodes to register."
-          sleep 1
-        done
-        # Whoever registered first will set a key
-        if [[ "$(curl -k "$\{CONSUL_ENDPOINT}/hosts/0")" == "$\{SELF_ADDRESS}" ]]; then
-          key="$(./consul keygen | head -c 24)"
-          curl -k -XPOST -d \\"{\\"key\\":\\"$\{key}\"}\\" "$\{CONSUL_ENDPOINT}"
-        fi
-        # Wait for the key to be set
-        while ! (curl -k "$\{CONSUL_ENDPOINT}.keys" | grep "key"); do
-          echo "Waiting for key to be set"
-          sleep 1
-        done
-        # Everyone is registered and there is a key so we can form the cluster.
-        # In a production setting this would be an actual systemd unit file 
-        # and you would not use public facing IP addresses, i.e. you'd run
-        # the nodes in a private address space
-        nohup ./consul agent -ui -syslog -server -bootstrap-expect "$\{NODE_COUNT}" \
-          -data-dir "/consul" \
-          -bind "$\{SELF_ADDRESS}" \
-          -advertise "$\{SELF_ADDRESS}" \
-          -encrypt "$(curl -k "$\{CONSUL_ENDPOINT}/key" | tr -d '"')" \
-        -retry-join "$(curl -k "$\{CONSUL_ENDPOINT}/hosts/0" | tr -d '"')" &
-      `;
+      const consulNodeUserData = [
+        '#!/bin/bash -eu',
+        'set -x',
+        'set -o pipefail',
+        'echo $(pwd) "${BASH_SOURCE}"',
+        `export ENDPOINT="https://${buddyUser}:${buddyPassword}@${buddyIp}:8443"`,
+        `export NODE_COUNT="${nodeCount}"`,
+        `export CONSUL_DOWNLOAD_URL="${consulUrl}"`,
+        'cat <<EOF > provision.sh.base64',
+        fs.readFileSync(`${__dirname}/scripts/consul.sh`).toString('base64'),
+        'EOF',
+        'base64 -d provision.sh.base64 > provision.sh',
+        'chmod +x provision.sh',
+        './provision.sh'
+      ].join("\n");
       return consulNodeUserData;
     })
     // The arguments are basically the same as for the cloud-init-buddy node
