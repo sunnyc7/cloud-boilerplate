@@ -83,7 +83,7 @@ async function main() {
         export PASSWORD="${buddyPassword}"
         export ENDPOINT="https://${buddyUser}:${buddyPassword}@${buddyIp}:8443"
         export NODE_COUNT="${nodeCount}"
-        mkdir /consul
+        mkdir -p /consul
         cd /consul
         while ! (wget '${consulUrl}'); do
           echo "Waiting for network to be ready"
@@ -105,15 +105,15 @@ async function main() {
         while [[ "$(curl -k "$\{CONSUL_ENDPOINT}/hosts.length")" -lt "$\{NODE_COUNT}" ]]; do
           # It is possible some other node reset everything so make sure we re-register
           if ! (curl -k "$\{CONSUL_ENDPOINT}" | grep "$\{SELF_ADDRESS}"); then
-            curl -k -XPOST "$\{CONSUL_ENDPOINT}/hosts" -d "\"$\{SELF_ADDRESS}\""
+            curl -k -XPOST "$\{CONSUL_ENDPOINT}/hosts" -d \\"$\{SELF_ADDRESS}\\"
           fi
           echo "Waiting for other nodes to register."
           sleep 1
         done
         # Whoever registered first will set a key
-        if [[ "$(curl -k "$\{CONSUL_ENDPOINT}/hosts/0")" == "\"$\{SELF_ADDRESS}\"" ]]; then
+        if [[ "$(curl -k "$\{CONSUL_ENDPOINT}/hosts/0")" == "$\{SELF_ADDRESS}" ]]; then
           key="$(./consul keygen | head -c 24)"
-          curl -k -XPOST -d "{\"key\":\"$\{key}\"}" "$\{CONSUL_ENDPOINT}"
+          curl -k -XPOST -d \\"{\\"key\\":\\"$\{key}\"}\\" "$\{CONSUL_ENDPOINT}"
         fi
         # Wait for the key to be set
         while ! (curl -k "$\{CONSUL_ENDPOINT}.keys" | grep "key"); do
