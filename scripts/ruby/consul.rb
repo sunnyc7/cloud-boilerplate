@@ -72,11 +72,10 @@ while (output = `curl -k '#{metadata_endpoint}.keys'`)["key"].nil?
 end
 
 # Everyone is registered and there is a key so we can form the cluster.
-# In a production setting this would be an actual systemd unit file 
-# and you would not use public facing IP addresses, i.e. you'd run
-# the nodes in a private address space
 encryption_key = `curl -k '#{metadata_endpoint}/key'`.tr('"', '')
 main_host = `curl -k '#{metadata_endpoint}/hosts/0'`.tr('"', '')
+# In a production environment all these settings would be put in a file to avoid
+# leaking any secret tokens
 command = [
   "./consul agent -ui -syslog -server -bootstrap-expect #{ENV['NODE_COUNT']}",
   "-data-dir '/consul'",
@@ -86,7 +85,8 @@ command = [
   "-retry-join '#{main_host}'",
   '&'
 ].join(' ')
-# Double fork to avoid any weirdness
+
+# Double fork and start the consul process as a daemon
 Process.fork do
   Process.setsid
   p = Process.fork do
