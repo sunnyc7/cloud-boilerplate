@@ -34,7 +34,7 @@ Process.fork do
       running = `ps aux`["app.js"]
       if running.nil?
         STDERR.puts "Looks like cloud-init-buddy is not running. Trying to start"
-        `tmux new-session -d -s cloud-init-buddy 'node app.js 2>&1 >> app.log'`
+        `tmux new-session -d -s cloud-init-buddy 'node app.js'`
       end
       sleep 2
     end
