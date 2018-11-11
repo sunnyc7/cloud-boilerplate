@@ -36,8 +36,8 @@ metadata_endpoint = "#{ENV['ENDPOINT']}/metadata/consul"
 # Initialize the hosts so it can be populated. This can fail so we need to loop until success.
 # Do this only if the there are no hosts already
 if `curl -k "#{metadata_endpoint}/hosts.length"`.strip.to_i <= 0
-  payload = {hosts: []}.to_json
-  command = "set -x; curl -k -XPOST '#{metadata_endpoint}' -d '#{payload}'"
+  initial_payload = {hosts: []}.to_json
+  command = "set -x; curl -k -XPOST '#{metadata_endpoint}' -d '#{initial_payload}'"
   output = `#{command}`
   while $?.exitstatus > 0
     STDERR.puts output
@@ -60,8 +60,8 @@ end
 # Whoever registered first will set a key
 if `set -x; curl -k '#{metadata_endpoint}/hosts/0'`[self_address]
   key = `./consul keygen`.strip[0...24]
-  payload = {key: key}.to_json
-  STDERR.puts `set -x; curl -k -XPOST -d '#{payload}' '#{metadata_endpoint}'`
+  key_payload = {key: key}.to_json
+  STDERR.puts `set -x; curl -k -XPOST -d '#{key_payload}' '#{metadata_endpoint}'`
 end
 
 # Wait for the key to be set
@@ -93,7 +93,16 @@ Process.fork do
     STDIN.reopen '/dev/null'
     STDOUT.reopen '/consul/output.log', 'a'
     STDERR.reopen '/consul/output.log', 'a'
-    exec(command)
+    # Run things in a loop so that in case the process dies we bring it back
+    loop do
+      unless `ps aux`["consul agent"]
+        consul = Process.fork do
+          exec(command)
+        end
+        Process.detach(consul)
+      end
+      sleep 2
+    end
   end
   Process.detach(p)
 end
