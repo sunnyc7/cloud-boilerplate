@@ -34,13 +34,16 @@ async function main() {
     'echo $(pwd) "${BASH_SOURCE}"',
     'apt update',
     'apt install --yes ruby',
+    'cat <<EOF > env.sh',
     `export BUDDY_PASSWORD="${buddyPassword}"`,
     `export BUDDY_USER="${buddyUser}"`,
+    'EOF',
     'cat <<EOF > provision.rb.base64',
     fs.readFileSync(`${__dirname}/scripts/ruby/cloud-init-buddy.rb`).toString('base64'),
     'EOF',
     'base64 -d provision.rb.base64 > provision.rb',
     'chmod +x provision.rb',
+    'source ./env.sh',
     './provision.rb'
   ].join("\n");
 
@@ -77,14 +80,17 @@ async function main() {
         'echo $(pwd) "${BASH_SOURCE}"',
         'apt update',
         'apt install --yes ruby',
+        'cat <<EOF > env.sh',
         `export ENDPOINT="https://${buddyUser}:${buddyPassword}@${buddyIp}:8443"`,
         `export NODE_COUNT="${nodeCount}"`,
         `export CONSUL_DOWNLOAD_URL="${consulUrl}"`,
+        'EOF',
         'cat <<EOF > provision.rb.base64',
         fs.readFileSync(`${__dirname}/scripts/ruby/consul.rb`).toString('base64'),
         'EOF',
         'base64 -d provision.rb.base64 > provision.rb',
         'chmod +x provision.rb',
+        'source ./env.sh',
         './provision.rb'
       ].join("\n");
       return consulNodeUserData;
