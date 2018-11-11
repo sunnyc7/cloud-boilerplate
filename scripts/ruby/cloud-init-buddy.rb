@@ -2,7 +2,7 @@
 require 'fileutils'
 
 # Utility method for executing a sequence of commands
-def execute_command(commands)
+def execute_commands(commands)
   commands.each do |command|
     STDOUT.puts "Executing command: #{command}"
     system(command)
