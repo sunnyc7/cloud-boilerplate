@@ -31,14 +31,17 @@ async function main() {
     '#!/bin/bash -eu',
     'set -x',
     'set -o pipefail',
+    'echo $(pwd) "${BASH_SOURCE}"',
+    'apt update',
+    'apt install --yes ruby',
     `export BUDDY_PASSWORD="${buddyPassword}"`,
     `export BUDDY_USER="${buddyUser}"`,
-    'cat <<EOF > provision.sh.base64',
-    fs.readFileSync(`${__dirname}/scripts/cloud-init-buddy.sh`).toString('base64'),
+    'cat <<EOF > provision.rb.base64',
+    fs.readFileSync(`${__dirname}/scripts/ruby/cloud-init-buddy.rb`).toString('base64'),
     'EOF',
-    'base64 -d provision.sh.base64 > provision.sh',
-    'chmod +x provision.sh',
-    './provision.sh'
+    'base64 -d provision.rb.base64 > provision.rb',
+    'chmod +x provision.rb',
+    './provision.rb'
   ].join("\n");
 
   // Cloud init buddy node creation
@@ -72,15 +75,17 @@ async function main() {
         'set -x',
         'set -o pipefail',
         'echo $(pwd) "${BASH_SOURCE}"',
+        'apt update',
+        'apt install --yes ruby',
         `export ENDPOINT="https://${buddyUser}:${buddyPassword}@${buddyIp}:8443"`,
         `export NODE_COUNT="${nodeCount}"`,
         `export CONSUL_DOWNLOAD_URL="${consulUrl}"`,
-        'cat <<EOF > provision.sh.base64',
-        fs.readFileSync(`${__dirname}/scripts/consul.sh`).toString('base64'),
+        'cat <<EOF > provision.rb.base64',
+        fs.readFileSync(`${__dirname}/scripts/ruby/consul.rb`).toString('base64'),
         'EOF',
-        'base64 -d provision.sh.base64 > provision.sh',
-        'chmod +x provision.sh',
-        './provision.sh'
+        'base64 -d provision.rb.base64 > provision.rb',
+        'chmod +x provision.rb',
+        './provision.rb'
       ].join("\n");
       return consulNodeUserData;
     })
