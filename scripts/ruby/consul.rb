@@ -21,10 +21,11 @@ unless consul_exists
     sleep 5
     output = `#{command}`
   end
-  # Install zip utilities to unzip the consul binary
-  `apt install -y zip`
-  `unzip -o *.zip`
-  `rm -f *.zip`
+  [
+    "apt install -y zip",
+    "unzip -o *.zip",
+    "rm -f *.zip"
+  ].each { |command| system(command) }
 end
 
 # We need the private address for coordination
@@ -96,9 +97,7 @@ Process.fork do
     # Run things in a loop so that in case the process dies we bring it back
     loop do
       unless `ps aux`["consul agent"]
-        consul = Process.fork do
-          exec(command)
-        end
+        consul = Process.fork { exec(command) }
         Process.detach(consul)
       end
       sleep 2
