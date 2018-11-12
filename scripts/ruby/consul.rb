@@ -40,10 +40,12 @@ if `curl -k "#{metadata_endpoint}/hosts.length"`.strip.to_i <= 0
   initial_payload = {hosts: []}.to_json
   command = "set -x; curl -k -XPOST -d '#{initial_payload}' '#{metadata_endpoint}'"
   output = `#{command}`
-  while $?.exitstatus > 0
+  # Verify that we actually created the root object
+  while (output = `curl -k '#{metadata_endpoint}.keys'`)["hosts"].nil?
     STDERR.puts output
     sleep 2
     output = `#{command}`
+    STDERR.puts output
   end
 end
 

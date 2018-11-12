@@ -1,4 +1,6 @@
 import * as aws from "@pulumi/aws";
+import { Region } from "@pulumi/aws";
+import { Output } from "@pulumi/pulumi/resource";
 
 // Public and private subnet associated with the availability zone
 type AvailabilityZoneSubnets = {
@@ -12,6 +14,20 @@ interface SubnetArgs<B extends boolean> extends aws.ec2.SubnetArgs {
     mapPublicIpOnLaunch: B;
     tags: { Name: string; };
 }
+
+export type VPCInformation = {
+  region: Region,
+  vpc: {
+    vpc: aws.ec2.Vpc,
+    securityGroups: Output<string>[]
+  },
+  subnets: {
+    az: string,
+    privateSubnet: aws.ec2.Subnet,
+    publicSubnet: aws.ec2.Subnet,
+  }[],
+  associations: Output<aws.ec2.RouteTableAssociation>[]
+};
 
 // Encapsulate everything inside a class for easier re-use
 export class MultiRegionVPC {
@@ -93,7 +109,7 @@ export class MultiRegionVPC {
     }
 
     // Where we put everything together for creating VPCs, subnets, security groups, routing tables, etc.
-    create() {
+    create(): Promise<VPCInformation>[] {
         // Iterate over each region and create the VPC and associate public/private subnets
         const networkConfig = this.regions.map(async (r: aws.Region) => {
             const vpcName = `${r}-vpc`;

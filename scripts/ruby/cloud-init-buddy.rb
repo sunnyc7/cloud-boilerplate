@@ -1,6 +1,11 @@
 #!/usr/bin/env ruby
 require 'fileutils'
 
+# Fail early if the environment isn't properly configured
+unless ENV['BUDDY_USER'] && ENV['BUDDY_PASSWORD']
+  raise StandardError, "Can not provision node without knowing the username and password"
+end
+
 # Utility method for executing a sequence of commands
 def execute_commands(commands)
   commands.each do |command|
