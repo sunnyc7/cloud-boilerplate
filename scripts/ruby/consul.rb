@@ -38,7 +38,7 @@ metadata_endpoint = "#{ENV['ENDPOINT']}/metadata/consul"
 # Do this only if the there are no hosts already
 if `curl -k "#{metadata_endpoint}/hosts.length"`.strip.to_i <= 0
   initial_payload = {hosts: []}.to_json
-  command = "set -x; curl -k -XPOST '#{metadata_endpoint}' -d '#{initial_payload}'"
+  command = "set -x; curl -k -XPOST -d '#{initial_payload}' '#{metadata_endpoint}'"
   output = `#{command}`
   while $?.exitstatus > 0
     STDERR.puts output
