@@ -1,4 +1,4 @@
-import { MultiRegionVPC, VPCInformation } from './pulumi/aws/multi-region';
+import { MultiRegionVPC } from './pulumi/aws/multi-region';
 import { ConsulCluster } from './pulumi/aws/consul-cluster';
 import { ec2 } from '@pulumi/aws';
 

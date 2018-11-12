@@ -33,7 +33,7 @@ export type VPCInformation = {
 export class MultiRegionVPC {
 
     // The constructor only requires the regions
-    constructor(public regions: aws.Region[] = ['us-east-1', 'us-east-2', 'us-west-1', 'us-west-2']) { }
+    constructor(readonly regions: aws.Region[] = ['us-east-1', 'us-east-2', 'us-west-1', 'us-west-2']) { }
 
     // Given the relevant pieces of information create a public subnet
     createSubnet<B extends boolean>(p: aws.Provider, vpc: aws.ec2.Vpc, az: string, ipAssignment: B, cidr: string) {

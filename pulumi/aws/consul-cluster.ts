@@ -43,7 +43,7 @@ export class ConsulCluster {
       `export BUDDY_USER="${buddyUser}"`,
       'EOF',
       'cat <<EOF > provision.rb.base64',
-      fs.readFileSync(`${__dirname}/scripts/ruby/cloud-init-buddy.rb`).toString('base64'),
+      fs.readFileSync(`${__dirname}/../../scripts/ruby/cloud-init-buddy.rb`).toString('base64'),
       'EOF',
       userDataProvisioning
     ].join("\n");
@@ -76,7 +76,7 @@ export class ConsulCluster {
         `export CONSUL_DOWNLOAD_URL="${consulUrl}"`,
         'EOF',
         'cat <<EOF > provision.rb.base64',
-        fs.readFileSync(`${__dirname}/scripts/ruby/consul.rb`).toString('base64'),
+        fs.readFileSync(`${__dirname}/../../scripts/ruby/consul.rb`).toString('base64'),
         'EOF',
         userDataProvisioning
       ].join("\n");
