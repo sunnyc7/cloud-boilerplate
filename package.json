@@ -1,9 +1,10 @@
 {
     "devDependencies": {
-        "@types/node": "latest"
+        "@types/node": "^10.12.6"
     },
     "dependencies": {
         "@pulumi/pulumi": "latest",
-        "@pulumi/aws": "latest"
+        "@pulumi/aws": "latest",
+        "@pulumi/gcp": "latest"
     }
 }
