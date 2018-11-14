@@ -1,4 +1,10 @@
 #!/usr/bin/env ruby
+# Re-open STDOUT/STDERR because every cloud provider likes to ship the logs
+# to different places so if we want to be consistent then we need to control
+# them ourselves
+STDOUT.reopen '/var/log/provision', 'a'
+STDERR.reopen '/var/log/provision', 'a'
+
 require 'fileutils'
 require 'json'
 
@@ -28,8 +34,13 @@ unless consul_exists
   ].each { |command| system(command) }
 end
 
-# We need the private address for coordination
-self_address = `ip addr show eth0 | grep 'inet ' | awk '{print $2}' | cut -f1 -d'/'`.strip
+# We need the private address for coordination. For some reason it is different on all
+# the cloud providers so we have to try a bunch of them before we get the address
+self_address = ''
+(0..5).flat_map { |i| ["eth#{i}", "ens#{i}"] }.each do |interface|
+  self_address = `ip addr show #{interface} | grep 'inet ' | awk '{print $2}' | cut -f1 -d'/'`.strip
+  break unless self_address.empty?
+end
 
 # Metadata endpoint for coordination
 metadata_endpoint = "#{ENV['ENDPOINT']}/metadata/consul"

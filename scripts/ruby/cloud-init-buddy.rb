@@ -1,4 +1,9 @@
 #!/usr/bin/env ruby
+# Reopen STDOUT/STDERR because every cloud providers like to put the cloud-init logs
+# somewhere different. If we want consistency then we need to control it ourselves.
+STDOUT.reopen '/var/log/provision', 'a'
+STDERR.reopen '/var/log/provision', 'a'
+
 require 'fileutils'
 
 # Fail early if the environment isn't properly configured

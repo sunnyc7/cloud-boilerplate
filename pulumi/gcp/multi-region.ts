@@ -1,13 +1,24 @@
 import * as gcp from '@pulumi/gcp';
 
+export type NetworkInformation = {
+    provider: gcp.Provider,
+    network: gcp.compute.Network,
+    subnets: {
+        zone: string,
+        subnet: gcp.compute.Subnetwork
+    }[],
+    firewall: gcp.compute.Firewall[]
+};
+
 // Encapsulate everything inside a class for easier re-use
 export class MultiRegionNetwork {
 
     // The constructor only requires the regions
-    constructor(readonly project: string, readonly regions: string[] = ['us-central1', 'us-east1', 'us-east4', 'us-west1', 'us-west2']) { }
+    constructor(readonly project: string,
+        readonly regions: string[] = ['us-central1', 'us-east1', 'us-east4', 'us-west1', 'us-west2']) { }
 
     // Where we put everything together for creating the VPC along with other required pieces
-    create() {
+    create(): Promise<NetworkInformation>[] {
         // I'm going to create a network per region to emulate AWS configuration
         const networkConfig = this.regions.map(async (r: string) => {
             // Create a provider for the region and grab the zones
@@ -71,7 +82,10 @@ export class MultiRegionNetwork {
                 privateIpGoogleAccess: true
             };
             const subnet = new gcp.compute.Subnetwork(`${zone}-subnet`, subnetworkArgs, { provider: p });
-            return subnet;
+            return {
+                zone: zone,
+                subnet: subnet
+            };
         });
         return zoneSubnets;
     }
