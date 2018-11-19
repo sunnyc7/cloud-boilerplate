@@ -12,6 +12,9 @@ any number of specified regions.
 Example of how to use the output from the multi-region class to bootstrap a consul cluster with
 the help of [cloud-init-buddy](https://github.com/cloudbootup/cloud-init-buddy).
 
+## `mysql-replication.ts`
+GTID based replication cluster with a single master node and configurable number of replicas.
+
 # `pulumi/gcp`
 Contains GCP patterns and best practices. Everything is codified with Pulumi's TypeScript SDK.
 
@@ -22,6 +25,9 @@ per region for isolation.
 ## `consul-cluster.ts`
 Same as for the AWS example. Set of classes outlining a pattern for setting up a consul cluster
 in GCP using the same bootstrapping script as for AWS.
+
+## `mysql-replication.ts`
+GTID based replication cluster with a single master node and configurable number of replicas.
 
 # Licensing
 
