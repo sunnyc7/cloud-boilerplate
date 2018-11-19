@@ -48,14 +48,9 @@ export class MySQLReplication {
       },
       deletionProtection: false,
       description: masterNodeName,
-      labels: {
-        name: masterNodeName,
-        purpose: "database"
-      },
+      labels: { name: masterNodeName, purpose: "database" },
       machineType: this.machineType,
-      metadata: {
-        name: masterNodeName
-      },
+      metadata: { name: masterNodeName },
       metadataStartupScript: masterUserData,
       name: `${masterNodeName}-${clusterTime}`,
       zone: subnetInformation.zone,
@@ -100,14 +95,9 @@ export class MySQLReplication {
         },
         deletionProtection: false,
         description: `${replicaNodeName}-${nodeNumber}`,
-        labels: {
-          name: `${replicaNodeName}-${nodeNumber}`,
-          purpose: "database"
-        },
+        labels: { name: `${replicaNodeName}-${nodeNumber}`, purpose: "database" },
         machineType: this.machineType,
-        metadata: {
-          name: `${replicaNodeName}-${nodeNumber}`
-        },
+        metadata: { name: `${replicaNodeName}-${nodeNumber}` },
         metadataStartupScript: replicaNodeBootstrapScript,
         name: `${replicaNodeName}-${nodeNumber}-${clusterTime}`,
         zone: subnetInformation.zone,

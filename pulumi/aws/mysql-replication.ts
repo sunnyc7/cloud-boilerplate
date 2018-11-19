@@ -38,6 +38,7 @@ export class MySQLReplication {
       userDataProvisioning
     ].join("\n");
 
+    const masterNodeName = 'mysql-master-node';
     const masterNodeArgs: ec2.InstanceArgs = {
       ami: this.ami,
       instanceType: this.instanceType,
@@ -46,9 +47,9 @@ export class MySQLReplication {
       keyName: this.keyPairName,
       userData: masterUserData,
       vpcSecurityGroupIds: vpcSecurityGroups,
-      tags: { Name: 'mysql-master-node' }
+      tags: { Name: masterNodeName }
     };
-    const masterNode = new ec2.Instance('mysql-master-node', masterNodeArgs);
+    const masterNode = new ec2.Instance(masterNodeName, masterNodeArgs);
 
     // 1 replicas
     const replicaNodes = [2].map(async (nodeNumber) => {

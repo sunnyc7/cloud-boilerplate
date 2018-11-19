@@ -35,6 +35,7 @@ export class ConsulCluster {
     ].join("\n");
 
     // We need the creation time because Pulumi can not recreate the instance otherwise
+    const buddyNodeName = 'cloud-init-buddy';
     const clusterTime = (new Date()).getTime();
     // Cloud init buddy node creation
     const cloudInitBuddyArgs: gcp.compute.InstanceArgs = {
@@ -43,17 +44,12 @@ export class ConsulCluster {
         initializeParams: { image: this.image }
       },
       deletionProtection: false,
-      description: "Cloud-init-buddy",
-      labels: {
-        name: "cloud-init-buddy",
-        purpose: "coordination"
-      },
+      description: buddyNodeName,
+      labels: { name: buddyNodeName, purpose: "coordination" },
       machineType: this.machineType,
-      metadata: {
-        name: "cloud-init-buddy"
-      },
+      metadata: { name: buddyNodeName },
       metadataStartupScript: buddyUserData,
-      name: `cloud-init-buddy-${clusterTime}`,
+      name: `${buddyNodeName}-${clusterTime}`,
       zone: subnetInformation.zone,
       networkInterfaces: [
         {
@@ -98,14 +94,9 @@ export class ConsulCluster {
         },
         deletionProtection: false,
         description: `consul-${nodeNumber}`,
-        labels: {
-          name: `consul-${nodeNumber}`,
-          purpose: "consul"
-        },
+        labels: { name: `consul-${nodeNumber}`, purpose: "consul" },
         machineType: this.machineType,
-        metadata: {
-          name: `consul-${nodeNumber}`
-        },
+        metadata: { name: `consul-${nodeNumber}` },
         metadataStartupScript: consulNodeBootstrapScript,
         name: `consul-${nodeNumber}-${clusterTime}`,
         zone: subnetInformation.zone,

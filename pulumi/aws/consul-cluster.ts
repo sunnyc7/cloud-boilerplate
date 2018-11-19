@@ -20,7 +20,8 @@ export class ConsulCluster {
     const subnetInformation = subnets[0];
 
     const buddyUser = 'admin';
-    const buddyPassword = crypto.createHash('sha256').update(crypto.randomBytes(32)).digest('base64').replace(/[\+\=\/]/g, '');
+    const buddyPassword = crypto.createHash('sha256').update(
+      crypto.randomBytes(32)).digest('base64').replace(/[\+\=\/]/g, '');
 
     // Cloud-init-buddy cloud-init script
     const buddyUserData = [
