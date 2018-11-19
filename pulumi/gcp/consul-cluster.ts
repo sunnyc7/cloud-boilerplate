@@ -2,6 +2,7 @@ import * as crypto from 'crypto';
 import * as fs from 'fs';
 import { NetworkInformation } from './multi-region';
 import * as gcp from '@pulumi/gcp';
+import { userDataPreamble, userDataProvisioning } from '../common';
 
 export class ConsulCluster {
   constructor(
@@ -19,20 +20,6 @@ export class ConsulCluster {
     const buddyUser = 'admin';
     const buddyPassword = crypto.createHash('sha256').update(
       crypto.randomBytes(32)).digest('base64').replace(/[\+\=\/]/g, '');
-
-    // Preamble and the provisioning parts are the same for all scripts so they're factored out.
-    const userDataPreamble = [
-      '#!/bin/bash -eu',
-      'set -x && set -o pipefail',
-      'echo $(pwd) "${BASH_SOURCE}"',
-      'apt update && apt install --yes ruby',
-    ].join("\n");
-    const userDataProvisioning = [
-      'base64 -d provision.rb.base64 > provision.rb',
-      'chmod +x provision.rb',
-      'source ./env.sh',
-      './provision.rb'
-    ].join("\n");
 
     // Cloud-init-buddy cloud-init script
     const buddyUserData = [

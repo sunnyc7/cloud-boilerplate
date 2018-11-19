@@ -2,13 +2,14 @@ import * as crypto from 'crypto';
 import * as fs from 'fs';
 import { VPCInformation } from './multi-region';
 import { ec2 } from '@pulumi/aws';
+import { userDataPreamble, userDataProvisioning } from '../common';
 
 export class ConsulCluster {
   constructor(
     readonly vpcInformation: Promise<VPCInformation>[],
-    readonly ami: string,
-    readonly keyPairName: string,
-    readonly instanceType: ec2.InstanceType
+    readonly ami: string = 'ami-a06bd7df',
+    readonly keyPairName: string = 'dell-laptop-xps-15',
+    readonly instanceType: ec2.InstanceType = ec2.T2InstanceMedium
   ) { }
 
   async create() {
@@ -20,20 +21,6 @@ export class ConsulCluster {
 
     const buddyUser = 'admin';
     const buddyPassword = crypto.createHash('sha256').update(crypto.randomBytes(32)).digest('base64').replace(/[\+\=\/]/g, '');
-
-    // Preamble and the provisioning parts are the same for all scripts so they're factored out.
-    const userDataPreamble = [
-      '#!/bin/bash -eu',
-      'set -x && set -o pipefail',
-      'echo $(pwd) "${BASH_SOURCE}"',
-      'apt update && apt install --yes ruby',
-    ].join("\n");
-    const userDataProvisioning = [
-      'base64 -d provision.rb.base64 > provision.rb',
-      'chmod +x provision.rb',
-      'source ./env.sh',
-      './provision.rb'
-    ].join("\n");
 
     // Cloud-init-buddy cloud-init script
     const buddyUserData = [
